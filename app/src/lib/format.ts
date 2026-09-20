@@ -5,8 +5,20 @@ export function weiToGen(wei: bigint): number {
   return Number(wei) / 1e18;
 }
 
-export function genToWei(gen: number): bigint {
-  return BigInt(Math.round(gen * 1e18));
+/**
+ * Exact GEN -> wei conversion. Parses the decimal text instead of
+ * multiplying floats, so 1.1 GEN is exactly 1100000000000000000 wei
+ * (`Math.round(1.1 * 1e18)` would give ...128).
+ */
+export function genToWei(gen: number | string): bigint {
+  let text = typeof gen === 'number' ? String(gen) : gen.trim();
+  if (/e/i.test(text)) text = Number(text).toFixed(18); // very small/large numbers print in exponent form
+  if (!/^\d*\.?\d*$/.test(text) || text === '' || text === '.') {
+    throw new Error('Invalid GEN amount.');
+  }
+  const [whole = '0', frac = ''] = text.split('.');
+  const fracWei = (frac + '0'.repeat(18)).slice(0, 18);
+  return BigInt(whole || '0') * 10n ** 18n + BigInt(fracWei);
 }
 
 export function formatGen(wei: bigint): string {
