@@ -50,7 +50,7 @@ mergeproof/
 │   ├── test_pure_logic.py       # plain pytest, no GenLayer install required
 │   └── test_bounty_escrow.py    # genlayer-test direct-mode integration tests
 ├── dist/
-│   └── bounty_escrow.bundle.py  # generated -- this is the file you actually deploy
+│   └── bounty_escrow.bundle.py  # generated -- this is the file actually deployed
 ├── LICENSE
 └── README.md
 ```
