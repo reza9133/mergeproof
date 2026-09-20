@@ -9,6 +9,7 @@ import { useWallet } from './hooks/useWallet';
 import { useBounties } from './hooks/useBounties';
 import { isConfigured, CONTRACT_ADDRESS } from './lib/contract';
 import { formatGen } from './lib/format';
+import { useToast } from './components/Toast';
 import type { BoardFilter } from './types';
 
 type Theme = 'light' | 'dark' | null;
@@ -33,6 +34,13 @@ export default function App() {
   const wallet = useWallet();
   const { bounties, loading, error, refresh } = useBounties();
   const toggleTheme = useTheme();
+  const { push: pushToast } = useToast();
+
+  // Wallet errors used to be stored but never shown, so a failed or rejected
+  // connect looked like nothing had happened.
+  useEffect(() => {
+    if (wallet.error) pushToast(wallet.error, 'error');
+  }, [wallet.error, pushToast]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -54,6 +62,8 @@ export default function App() {
       <TopBar
         address={wallet.address}
         connecting={wallet.connecting}
+        wrongNetwork={wallet.wrongNetwork}
+        onSwitchNetwork={() => void wallet.switchNetwork()}
         onConnect={wallet.connect}
         onDisconnect={wallet.disconnect}
         onToggleTheme={toggleTheme}
