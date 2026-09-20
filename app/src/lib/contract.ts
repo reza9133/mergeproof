@@ -3,17 +3,23 @@ import { ExecutionResult, TransactionStatus } from 'genlayer-js/types';
 import { getReadClient } from './genlayerClient';
 import type { Bounty, BountyStatus } from '../types';
 
-export const CONTRACT_ADDRESS = (import.meta.env.VITE_CONTRACT_ADDRESS || '') as `0x${string}` | '';
+/** BountyEscrow as deployed on Studionet. Override per-environment with VITE_CONTRACT_ADDRESS. */
+export const DEFAULT_CONTRACT_ADDRESS = '0xFF9461802642D8D065D4e685a97653D35701Cfe1' as const;
+
+const ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
+const envAddress = String(import.meta.env.VITE_CONTRACT_ADDRESS || '').trim();
+
+export const CONTRACT_ADDRESS = (envAddress || DEFAULT_CONTRACT_ADDRESS) as `0x${string}`;
 export const NETWORK_LABEL = import.meta.env.VITE_NETWORK_LABEL || 'Studionet';
-export const isConfigured = CONTRACT_ADDRESS.length > 0;
+export const isConfigured = ADDRESS_PATTERN.test(CONTRACT_ADDRESS);
 
 function requireAddress(): `0x${string}` {
   if (!isConfigured) {
     throw new Error(
-      'VITE_CONTRACT_ADDRESS is not set. Deploy BountyEscrow and add its address to app/.env \u2014 see the README.',
+      `VITE_CONTRACT_ADDRESS ("${CONTRACT_ADDRESS}") is not a valid contract address. Fix it in app/.env \u2014 see the README.`,
     );
   }
-  return CONTRACT_ADDRESS as `0x${string}`;
+  return CONTRACT_ADDRESS;
 }
 
 function toBounty(id: number, raw: Record<string, unknown>): Bounty {
@@ -70,9 +76,16 @@ interface WriteDeps {
 }
 
 /**
- * Submits a write, waits for it to finalize, and throws unless the
- * transaction both finalized *and* actually returned rather than
- * erroring \u2014 a finalized status alone does not mean the call succeeded.
+ * Submits a write, waits for consensus to *accept* it, and throws unless
+ * the transaction both reached a decided state *and* actually returned
+ * rather than erroring \u2014 a decided status alone does not mean the call
+ * succeeded.
+ *
+ * We wait for ACCEPTED rather than FINALIZED: contract state is readable
+ * as soon as a transaction is accepted, whereas FINALIZED only arrives
+ * after the appeal/finality window, which can be far longer than this
+ * poll loop (and would make a perfectly good write look like a timeout).
+ * Emitted GEN transfers (payouts, refunds) are released on finalization.
  */
 async function submitWrite(
   { client }: WriteDeps,
@@ -85,7 +98,7 @@ async function submitWrite(
   const txId = await client.writeContract({ address, functionName, args, value });
   const receipt = await client.waitForTransactionReceipt({
     hash: txId,
-    status: TransactionStatus.FINALIZED,
+    status: TransactionStatus.ACCEPTED,
     interval: 3000,
     retries: 100,
   });
