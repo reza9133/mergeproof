@@ -23,7 +23,9 @@ instead of stable Studionet, its fee-estimation API differs — see
 
    Copy the address the CLI prints.
 
-2. **Configure the app:**
+2. **Configure the app (optional):** the app ships pre-pointed at the
+   Studionet deployment `0xFF9461802642D8D065D4e685a97653D35701Cfe1`. To use
+   your own deployment instead:
 
    ```bash
    cd app
@@ -50,14 +52,16 @@ no server component; the chain is the backend.
 
 - **Reads** (`bounty_count`, `get_bounty`) go through one shared read-only
   client created with no account — see `src/lib/genlayerClient.ts`.
-- **Writes** (`create_bounty`, `claim`, `settle`, `cancel`, `reclaim_expired`)
+- **Writes** (`create_bounty`, `claim`, `settle`, `cancel`, `release_stale_claim`, `reclaim_expired`)
   require a connected wallet. Connecting requests `eth_requestAccounts` from
   `window.ethereum`, then binds a GenLayer client to that address and calls
   `client.connect('studionet')`, matching the pattern in the GenLayerJS docs.
-- Every write in `src/lib/contract.ts` waits for `FINALIZED` and checks
-  **both** the transaction status *and* `txExecutionResultName ===
-  'FINISHED_WITH_RETURN'` before treating it as successful — a finalized
-  status alone doesn't mean the call didn't revert inside the contract.
+- Every write in `src/lib/contract.ts` waits for `ACCEPTED` (contract state is
+  readable from that point; `FINALIZED` only arrives after the finality
+  window) and checks **both** the transaction status *and*
+  `txExecutionResultName === 'FINISHED_WITH_RETURN'` before treating it as
+  successful — a decided status alone doesn't mean the call didn't revert
+  inside the contract. GEN payouts and refunds are released on finalization.
 
 ## Targeting Studio-dev instead
 
