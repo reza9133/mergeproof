@@ -4,12 +4,22 @@ import { NETWORK_LABEL } from '../lib/contract';
 interface TopBarProps {
   address: string | null;
   connecting: boolean;
+  wrongNetwork: boolean;
+  onSwitchNetwork: () => void;
   onConnect: () => void;
   onDisconnect: () => void;
   onToggleTheme: () => void;
 }
 
-export function TopBar({ address, connecting, onConnect, onDisconnect, onToggleTheme }: TopBarProps) {
+export function TopBar({
+  address,
+  connecting,
+  wrongNetwork,
+  onSwitchNetwork,
+  onConnect,
+  onDisconnect,
+  onToggleTheme,
+}: TopBarProps) {
   return (
     <header className="topbar">
       <div className="wrap topbar-inner">
@@ -42,9 +52,35 @@ export function TopBar({ address, connecting, onConnect, onDisconnect, onToggleT
             </svg>
           </button>
           {address ? (
-            <button className="btn btn-ghost btn-sm" onClick={onDisconnect} title="Disconnect wallet">
-              {shortAddress(address)}
-            </button>
+            <>
+              {wrongNetwork && (
+                <button
+                  className="btn btn-ghost btn-sm"
+                  style={{ borderColor: 'var(--bad)', color: 'var(--bad)' }}
+                  onClick={onSwitchNetwork}
+                >
+                  Wrong network &mdash; switch to {NETWORK_LABEL}
+                </button>
+              )}
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                onClick={onDisconnect}
+                title={`Connected as ${address} \u2014 click to disconnect`}
+              >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: '50%',
+                    background: wrongNetwork ? 'var(--bad)' : 'var(--good)',
+                    boxShadow: `0 0 0 3px ${wrongNetwork ? 'var(--bad-soft)' : 'var(--good-soft)'}`,
+                  }}
+                />
+                {shortAddress(address)}
+              </button>
+            </>
           ) : (
             <button className="btn btn-ghost btn-sm" onClick={onConnect} disabled={connecting}>
               {connecting ? 'Connecting\u2026' : 'Connect wallet'}
